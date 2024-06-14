@@ -13,6 +13,8 @@ public class Client {
         try (Socket cs = new Socket("localhost", 9999)) {
             oos = new ObjectOutputStream(new BufferedOutputStream(cs.getOutputStream()));
             //oos.flush(); - вместо flush() используем отложенное создание блокирующего ObjectInputStream см. ниже if (ois == null)
+
+            // читаем из Консоли - отправляем на Сервер
             new Thread(() -> {
                 scanner = new Scanner(System.in);
                 while (true) {
@@ -28,17 +30,20 @@ public class Client {
                 }
             }).start();
 
-            while (true) {
-                try {
-                    if (ois == null)
-                        ois = new ObjectInputStream(new BufferedInputStream(cs.getInputStream()));
-                    Message msg = (Message) ois.readObject();
-                    System.out.println();
-                    System.out.println(msg);
-                } catch (IOException | ClassNotFoundException e) {
-                    throw new RuntimeException(e);
+            // читаем из Сокета - печатаем в Консоль
+            new Thread (() -> {
+                while (true) {
+                    try {
+                        if (ois == null)
+                            ois = new ObjectInputStream(new BufferedInputStream(cs.getInputStream()));
+                        Message msg = (Message) ois.readObject();
+                        System.out.println();
+                        System.out.println(msg);
+                    } catch (IOException | ClassNotFoundException e) {
+                        throw new RuntimeException(e);
+                    }
                 }
-            }
+            }).start();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
