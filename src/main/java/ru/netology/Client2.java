@@ -5,18 +5,14 @@ import java.net.Socket;
 import java.util.Scanner;
 
 public class Client2 {
-    private static ObjectOutputStream oos;
-    private static ObjectInputStream ois;
-    private static Scanner scanner;
-
     public static void main(String[] args) {
-        try (Socket cs = new Socket("localhost", 9999)) {
-            oos = new ObjectOutputStream(new BufferedOutputStream(cs.getOutputStream()));
-            //oos.flush(); - вместо flush() используем отложенное создание блокирующего ObjectInputStream см. ниже if (ois == null)
+        try (Socket cs = new Socket("localhost", Server.PORT)) {
+            var oos = new ObjectOutputStream(new BufferedOutputStream(cs.getOutputStream()));
+            oos.flush();
             new Thread(() -> {
-                scanner = new Scanner(System.in);
+                var scanner = new Scanner(System.in);
                 while (true) {
-                    System.out.print("Type name: ");
+                    System.out.print("@client-2 > ");
                     String name = scanner.nextLine();
                     Message msg = new Message(name);
                     try {
@@ -28,13 +24,13 @@ public class Client2 {
                 }
             }).start();
 
+            var ois = new ObjectInputStream(new BufferedInputStream(cs.getInputStream()));
             while (true) {
                 try {
-                    if (ois == null)
-                        ois = new ObjectInputStream(new BufferedInputStream(cs.getInputStream()));
                     Message msg = (Message) ois.readObject();
                     System.out.println();
                     System.out.println(msg);
+                    System.out.print("@client-2 > ");
                 } catch (IOException | ClassNotFoundException e) {
                     throw new RuntimeException(e);
                 }

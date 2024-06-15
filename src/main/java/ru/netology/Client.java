@@ -5,47 +5,38 @@ import java.net.Socket;
 import java.util.Scanner;
 
 public class Client {
-    private static ObjectOutputStream oos;
-    private static ObjectInputStream ois;
-    private static Scanner scanner;
-
-    public static void main(String[] args) {
-        try (Socket cs = new Socket("localhost", 9999)) {
-            oos = new ObjectOutputStream(new BufferedOutputStream(cs.getOutputStream()));
-            //oos.flush(); - вместо flush() используем отложенное создание блокирующего ObjectInputStream см. ниже if (ois == null)
-
-            // читаем из Консоли - отправляем на Сервер
-            new Thread(() -> {
-                scanner = new Scanner(System.in);
-                while (true) {
-                    System.out.print("Type name: ");
-                    String name = scanner.nextLine();
-                    Message msg = new Message(name);
-                    try {
-                        oos.writeObject(msg);
-                        oos.flush();
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
+    public static void main(String[] args) throws IOException {
+        Socket cs = new Socket("localhost", Server.PORT);
+        var oos = new ObjectOutputStream(new BufferedOutputStream(cs.getOutputStream()));
+        oos.flush();
+        new Thread(() -> {
+            var scanner = new Scanner(System.in);
+            while (true) {
+                System.out.print("@client-1 > ");
+                String name = scanner.nextLine();
+                Message msg = new Message(name);
+                try {
+                    oos.writeObject(msg);
+                    oos.flush();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
                 }
-            }).start();
+            }
+        }).start();
 
-            // читаем из Сокета - печатаем в Консоль
-            new Thread (() -> {
+        new Thread(() -> {
+            try {
+                var ois = new ObjectInputStream(new BufferedInputStream(cs.getInputStream()));
                 while (true) {
-                    try {
-                        if (ois == null)
-                            ois = new ObjectInputStream(new BufferedInputStream(cs.getInputStream()));
-                        Message msg = (Message) ois.readObject();
-                        System.out.println();
-                        System.out.println(msg);
-                    } catch (IOException | ClassNotFoundException e) {
-                        throw new RuntimeException(e);
-                    }
+                    Message msg = (Message) ois.readObject();
+                    System.out.println();
+                    System.out.println(msg);
+                    System.out.print("@client-1 > ");
                 }
-            }).start();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+            } catch (IOException | ClassNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+        }).start();
     }
 }
+

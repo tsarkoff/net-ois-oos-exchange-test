@@ -3,24 +3,32 @@ package ru.netology;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Server {
+    public static final int PORT = 7777;
+    private static final Map<Integer, ObjectOutputStream> clients = new HashMap<>();
+
     public static void main(String[] args) throws IOException {
-        try (ServerSocket sc = new ServerSocket(9999)) {
+        try (ServerSocket sc = new ServerSocket(PORT)) {
             while (true) {
                 Socket cs = sc.accept();
                 new Thread(() -> {
                     try {
-                        var in = new BufferedInputStream(cs.getInputStream());
-                        ObjectInputStream ois = new ObjectInputStream(in);
-                        var out = new BufferedOutputStream(cs.getOutputStream());
-                        ObjectOutputStream oos = new ObjectOutputStream(out);
-                        //oos.flush(); - вместо flush() используем отложенное создание ObjectInputStream на Клиенте (см. Client.java)
+                        var oos = new ObjectOutputStream(new BufferedOutputStream(cs.getOutputStream()));
+                        oos.flush();
+                        clients.put(cs.getPort(), oos);
+                        var ois = new ObjectInputStream(new BufferedInputStream(cs.getInputStream()));
                         while (true) {
                             Message msg = (Message) ois.readObject();
-                            System.out.println(msg);
-                            oos.writeObject(msg);
-                            oos.flush();
+                            for (var out : clients.values()) {
+                                System.out.println(msg);
+                                if (!out.equals(oos)) {
+                                    out.writeObject(msg);
+                                    out.flush();
+                                }
+                            }
                         }
                     } catch (IOException | ClassNotFoundException e) {
                         throw new RuntimeException(e);
